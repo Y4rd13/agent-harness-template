@@ -1,0 +1,48 @@
+# Keep the agent instruction files inside the limits where agents still follow them: AGENTS.md at most
+# 200 lines, CLAUDE.md at most 40 and importing AGENTS.md, every path-scoped rule at most 200 lines and
+# with a paths: field. A rule without paths: loads in every session and nothing reports it.
+name: Instruction files
+
+on:
+  pull_request:
+    paths: ["AGENTS.md", "CLAUDE.md", ".claude/rules/**"]
+  push:
+    branches: [main]
+    paths: ["AGENTS.md", "CLAUDE.md", ".claude/rules/**"]
+
+permissions: {}
+
+jobs:
+  limits:
+    name: Instruction files
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Check instruction files
+        run: |
+          fail=0
+          lines() { wc -l < "$1"; }
+          err() { echo "::error file=$1::$2"; fail=1; }
+          if [ -f AGENTS.md ]; then
+            [ "$(lines AGENTS.md)" -le 200 ] || err AGENTS.md "AGENTS.md has $(lines AGENTS.md) lines (limit 200)"
+          else
+            err AGENTS.md "AGENTS.md is missing; it is the canonical conventions file"
+          fi
+          if [ -f CLAUDE.md ]; then
+            [ "$(lines CLAUDE.md)" -le 40 ] || err CLAUDE.md "CLAUDE.md has $(lines CLAUDE.md) lines (limit 40)"
+            grep -qx '@AGENTS.md' CLAUDE.md || err CLAUDE.md "CLAUDE.md does not import AGENTS.md (@AGENTS.md on its own line)"
+          fi
+          for f in .claude/rules/*.md; do
+            [ -e "$f" ] || continue
+            [ "$(lines "$f")" -le 200 ] || err "$f" "$f has $(lines "$f") lines (limit 200)"
+            if ! { [ "$(head -n 1 "$f")" = "---" ] && sed -n '2,/^---$/p' "$f" | grep -q '^paths:'; }; then
+              err "$f" "$f has no paths: frontmatter, so it loads in every session"
+            fi
+          done
+          [ "$fail" -eq 0 ] && echo "Instruction files are within their limits"
+          exit "$fail"
