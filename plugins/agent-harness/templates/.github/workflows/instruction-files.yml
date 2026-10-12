@@ -1,11 +1,13 @@
 # Keep the agent instruction files inside the limits where agents still follow them: AGENTS.md at most
 # 200 lines, CLAUDE.md at most 40 and importing AGENTS.md, every path-scoped rule at most 200 lines and
 # with a paths: field. A rule without paths: loads in every session and nothing reports it.
+#
+# No paths: filter on pull_request on purpose: a required check whose workflow is skipped by a path
+# filter stays "Pending" and blocks the merge. The job takes seconds, so it runs on every pull request.
 name: Instruction files
 
 on:
   pull_request:
-    paths: ["AGENTS.md", "CLAUDE.md", ".claude/rules/**"]
   push:
     branches: [main]
     paths: ["AGENTS.md", "CLAUDE.md", ".claude/rules/**"]

@@ -6,7 +6,8 @@
 # Setup: a repository secret ANTHROPIC_API_KEY (or CLAUDE_CODE_OAUTH_TOKEN; swap the input below), and a
 # repository variable AI_REVIEW_MODE: off (default), shadow (report only, check stays neutral) or advise
 # (the check fails while a verified blocking finding remains). Start in shadow, read a few weeks of
-# verdicts, then switch to advise and make ai-review/gate a required check.
+# verdicts, then switch to advise and make ai-review/gate a required check. Forks and drafts get no
+# check at all, so a required ai-review/gate keeps them waiting: review those by hand.
 name: AI review
 
 on:
