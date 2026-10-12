@@ -128,7 +128,9 @@ fallos.
 ### Un workflow nuevo no se ejecuta en pull requests antiguos
 
 **Síntoma.** Hiciste merge de un workflow `pull_request` nuevo y los pull requests abiertos no lo ejecutan.
-**Causa.** Los workflows de `pull_request` se leen desde la rama head del pull request.
+**Causa.** Una ejecución de `pull_request` usa los workflows del commit de merge del pull request, que
+GitHub construye cuando el pull request se actualiza. Un pull request que no se tocó desde que llegó el
+workflow puede no ejecutarlo.
 **Qué hacer.** Prueba un workflow nuevo con un pull request recién creado sobre el `main` actual, o
 actualiza la rama antigua.
 

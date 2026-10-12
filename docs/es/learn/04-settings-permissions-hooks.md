@@ -64,17 +64,20 @@ aplicando.
 La plantilla bloquea los commits y los pushes a `main`. En pseudocódigo:
 
 ```text
+if jq is not installed: block "this hook needs jq"
 command = stdin.tool_input.command
 branch  = git branch --show-current
-if command runs "git ... push" with a refspec that is main (main, HEAD:main), as a whole word:
+if command runs "git ... push" with an argument whose destination is main
+        (main, +main, HEAD:main, HEAD:refs/heads/main), as a whole word:
     block "no commits or pushes to main"
-if branch is main and command runs "git ... commit", or a bare "git push" / "git push <remote>":
+if branch is main and command runs "git ... commit" or "git ... push" in any form:
     block "no commits or pushes to main"
 otherwise allow
 ```
 
 Viene como una línea de shell en `settings.json`, porque un hook necesita código para ejecutarse. También
-coincide con `git -C <dir> push`, que la regla de permisos anterior no detecta.
+coincide con `git -C <dir> push`, que la regla de permisos anterior no detecta. Falla cerrado: sin `jq`
+bloquea en lugar de dejar pasar todo.
 
 ## Cuándo usar cada uno
 

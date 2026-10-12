@@ -58,13 +58,21 @@ Luego, dentro de Claude Code en tu repositorio:
    con tus archivos.
 3. Copia [settings.json](plugins/agent-harness/templates/.claude/settings.json) a `.claude/` y completa la
    allow list con tus comandos.
-4. Copia los workflows que quieras desde
+   El hook necesita `jq` en cada máquina; sin él, bloquea cada llamada a Bash y dice por qué.
+4. Copia también [docs/conventions/](plugins/agent-harness/templates/docs/conventions/agent-instructions.md):
+   `AGENTS.md` apunta a sus dos archivos.
+5. Copia los workflows que quieras desde
    [.github/workflows/](plugins/agent-harness/templates/.github/workflows/ci.yml), la
    [plantilla de PR](plugins/agent-harness/templates/.github/pull_request_template.md) y
-   [CODEOWNERS](plugins/agent-harness/templates/.github/CODEOWNERS).
-5. Agrega `CLAUDE.local.md` y `.claude/settings.local.json` al `.gitignore`. Si tu gitignore global excluye
+   [CODEOWNERS](plugins/agent-harness/templates/.github/CODEOWNERS). Para la revisión con IA, haz merge primero
+   de [ai-review.prompt.md](plugins/agent-harness/templates/.github/prompts/ai-review.prompt.md) y
+   [ai-review.schema.json](plugins/agent-harness/templates/.github/ai-review.schema.json), en su propio pull
+   request: el workflow los lee desde la rama base.
+6. Si tu rama por defecto no es `main`, reemplaza `main` en el hook, en los `branches:` de los workflows y en
+   `AGENTS.md`.
+7. Agrega `CLAUDE.local.md` y `.claude/settings.local.json` al `.gitignore`. Si tu gitignore global excluye
    `.claude/`, agrega `!.claude/` al `.gitignore` del repositorio.
-6. Abre Claude Code y ejecuta `/memory` para confirmar que `CLAUDE.md` y `AGENTS.md` se cargaron.
+8. Abre Claude Code y ejecuta `/memory` para confirmar que `CLAUDE.md` y `AGENTS.md` se cargaron.
 
 ## Qué hay en los templates
 

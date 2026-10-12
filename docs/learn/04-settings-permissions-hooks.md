@@ -61,17 +61,20 @@ A blocking hook wins over an allow rule. It does not bypass deny or ask rules: t
 The template blocks commits and pushes to `main`. In pseudocode:
 
 ```text
+if jq is not installed: block "this hook needs jq"
 command = stdin.tool_input.command
 branch  = git branch --show-current
-if command runs "git ... push" with a refspec that is main (main, HEAD:main), as a whole word:
+if command runs "git ... push" with an argument whose destination is main
+        (main, +main, HEAD:main, HEAD:refs/heads/main), as a whole word:
     block "no commits or pushes to main"
-if branch is main and command runs "git ... commit", or a bare "git push" / "git push <remote>":
+if branch is main and command runs "git ... commit" or "git ... push" in any form:
     block "no commits or pushes to main"
 otherwise allow
 ```
 
 It ships as one line of shell in `settings.json`, because a hook needs code to run. It also matches
-`git -C <dir> push`, which the permission rule above misses.
+`git -C <dir> push`, which the permission rule above misses. It fails closed: without `jq` it blocks
+instead of letting everything through.
 
 ## When to use which
 

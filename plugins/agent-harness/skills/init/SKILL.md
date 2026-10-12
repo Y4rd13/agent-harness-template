@@ -56,7 +56,9 @@ For each piece chosen, map a template to a target path and fill it:
   has its own conventions, each with a `paths:` glob that matches at least one tracked file. Add each rule
   to the "Detail on demand" list in `AGENTS.md`.
 - `.claude/settings.json`: the allow list from the real commands; keep the push and `.env` rules and the
-  hook unchanged.
+  hook. The hook needs `jq`: say so in the report.
+- The default branch: every template says `main`. If the repository's default branch has another name,
+  replace `main` in the hook command, in the workflows' `branches:` and in the `AGENTS.md` lines.
 - `.claude/skills/ship-pr/SKILL.md`, `.claude/agents/reviewer.md`, `.github/pull_request_template.md`,
   `.github/CODEOWNERS` (ask for the owner team if unknown, or leave the file out), `.github/dependabot.yml`
   with the real ecosystem.

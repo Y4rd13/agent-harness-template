@@ -44,7 +44,9 @@ Y antes de que el modelo empiece, `prepare` elimina del árbol del pull request:
 - `.git`: el historial y las credenciales no son material de revisión.
 
 El prompt, el schema y las convenciones vienen de la **base branch**, para que un pull request no pueda
-reescribir las reglas con las que se le juzga. Los forks se omiten, porque no reciben secretos.
+editar el prompt ni las convenciones con las que se le juzga. El archivo del workflow es otra cosa: con
+`pull_request` se ejecuta desde el pull request, así que mantén `.github/` en `CODEOWNERS` y revisa sus
+cambios. Los forks se omiten, porque no reciben secretos.
 
 ## El contrato de evidencia
 

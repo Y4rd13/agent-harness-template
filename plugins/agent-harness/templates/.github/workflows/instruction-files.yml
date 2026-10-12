@@ -39,12 +39,12 @@ jobs:
             [ "$(lines CLAUDE.md)" -le 40 ] || err CLAUDE.md "CLAUDE.md has $(lines CLAUDE.md) lines (limit 40)"
             grep -qx '@AGENTS.md' CLAUDE.md || err CLAUDE.md "CLAUDE.md does not import AGENTS.md (@AGENTS.md on its own line)"
           fi
-          for f in .claude/rules/*.md; do
-            [ -e "$f" ] || continue
+          # Claude Code discovers rules recursively, so nested directories count too.
+          while IFS= read -r f; do
             [ "$(lines "$f")" -le 200 ] || err "$f" "$f has $(lines "$f") lines (limit 200)"
             if ! { [ "$(head -n 1 "$f")" = "---" ] && sed -n '2,/^---$/p' "$f" | grep -q '^paths:'; }; then
               err "$f" "$f has no paths: frontmatter, so it loads in every session"
             fi
-          done
+          done < <(find .claude/rules -name '*.md' 2>/dev/null)
           [ "$fail" -eq 0 ] && echo "Instruction files are within their limits"
           exit "$fail"

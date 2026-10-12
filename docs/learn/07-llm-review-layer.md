@@ -42,8 +42,10 @@ And before the model starts, `prepare` removes from the pull request's tree:
 - symbolic links: the Read tool follows them out of the workspace;
 - `.git`: history and credentials are not review material.
 
-The prompt, the schema and the conventions come from the **base branch**, so a pull request cannot rewrite
-the rules it is judged by. Forks are skipped, because they get no secrets.
+The prompt, the schema and the conventions come from the **base branch**, so a pull request cannot edit
+the prompt or the conventions it is judged by. The workflow file itself is a different matter: under
+`pull_request` it runs from the pull request, so keep `.github/` in `CODEOWNERS` and review changes to it.
+Forks are skipped, because they get no secrets.
 
 ## The evidence contract
 

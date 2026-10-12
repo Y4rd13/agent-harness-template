@@ -22,7 +22,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "cmd=$(jq -r '.tool_input.command // empty'); br=$(git branch --show-current 2>/dev/null); g='(^|[;&|[:space:]])git([[:space:]]+-[^[:space:]]+([[:space:]]+[^-[:space:]][^[:space:]]*)?)*[[:space:]]+'; if printf '%s' \"$cmd\" | grep -Eq \"${g}push[^;&|]*[[:space:]:]main([[:space:];&|]|$)\" || { [ \"$br\" = main ] && printf '%s' \"$cmd\" | grep -Eq \"${g}(commit|push([[:space:]]+[^-[:space:];&|]+)?[[:space:]]*([;&|]|$))\"; }; then echo 'Blocked by a project hook: no commits or pushes to main. Create a feature branch first.' >&2; exit 2; fi"
+            "command": "command -v jq >/dev/null 2>&1 || { echo 'Blocked: this hook needs jq to read the command. Install jq.' >&2; exit 2; }; cmd=$(jq -r '.tool_input.command // empty'); br=$(git branch --show-current 2>/dev/null); g='(^|[;&|[:space:]])git([[:space:]]+-[^[:space:]]+([[:space:]]+[^-[:space:]][^[:space:]]*)?)*[[:space:]]+'; if printf '%s' \"$cmd\" | grep -Eq \"${g}push([[:space:]][^;&|]*)?[[:space:]]\\+?([^[:space:]:;&|]*:)?(refs/heads/)?main([[:space:];&|]|$)\" || { [ \"$br\" = main ] && printf '%s' \"$cmd\" | grep -Eq \"${g}(commit|push)([[:space:];&|]|$)\"; }; then echo 'Blocked by a project hook: no commits or pushes to main. Create a feature branch first.' >&2; exit 2; fi"
           }
         ]
       }

@@ -117,7 +117,8 @@ and reads as green.
 ### A new workflow does not run on older pull requests
 
 **Symptom.** You merged a new `pull_request` workflow and open pull requests do not run it.
-**Cause.** `pull_request` workflows are read from the pull request's head branch.
+**Cause.** A `pull_request` run uses the workflow files of the pull request's merge commit, which GitHub
+builds when the pull request is updated. A pull request untouched since the workflow landed can miss it.
 **Do.** Test a new workflow with a fresh pull request based on current `main`, or update the old branch.
 
 ### Two green pull requests break `main` together

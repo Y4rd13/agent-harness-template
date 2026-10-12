@@ -12,7 +12,7 @@ Every check reports `file:line`, the check id, a severity (`error` blocks, `warn
 Instruction files past these sizes lose adherence and crowd every session's context.
 
 ```text
-for (file, limit) in [(AGENTS.md, 200), (CLAUDE.md, 40)] + [(r, 200) for r in .claude/rules/*.md]:
+for (file, limit) in [(AGENTS.md, 200), (CLAUDE.md, 40)] + [(r, 200) for r in .claude/rules/**/*.md]:
     if file exists and line_count(file) > limit:
         error(file, "{n} lines, limit {limit}: move detail to docs/conventions/ or a path-scoped rule")
 if AGENTS.md does not exist:
@@ -24,7 +24,7 @@ if AGENTS.md does not exist:
 A rule without a parsable `paths:` loads in every session, and nothing reports it.
 
 ```text
-for rule in .claude/rules/*.md:
+for rule in .claude/rules/**/*.md:
     front = text between a first line "---" and the next "---"
     if front is missing or YAML does not parse or "paths" not in front:
         error(rule, "no paths: frontmatter, so it loads in every session")
@@ -49,7 +49,7 @@ A glob that matches nothing is a rule that never loads, usually after a director
 
 ```text
 tracked = git ls-files
-for rule in .claude/rules/*.md:
+for rule in .claude/rules/**/*.md:
     for glob in rule.paths:
         if no file in tracked matches glob:      # "**" spans directories, "*" does not
             warn(rule, "paths glob {glob} matches no file")
@@ -60,7 +60,7 @@ for rule in .claude/rules/*.md:
 Instruction files point at files; a pointer to a deleted file sends the agent nowhere.
 
 ```text
-for file in [AGENTS.md, CLAUDE.md] + .claude/rules/*.md + docs/conventions/*.md:
+for file in [AGENTS.md, CLAUDE.md] + .claude/rules/**/*.md + docs/conventions/*.md:
     for token inside `backticks` that looks like a repository path (has "/" or a file extension,
             no spaces, no "<", not a URL, not a glob):
         if path does not exist from the repository root:
@@ -118,8 +118,9 @@ is code the author controls.
 
 ```text
 SAFE = [github.sha, github.run_id, github.run_number, github.repository, github.event.pull_request.number,
-        github.event.pull_request.base.sha, github.event.pull_request.head.sha, steps.*.outputs.*,
-        needs.*.outputs.*, vars.*, secrets.*, matrix.*, inputs.* of workflow_call]
+        github.event.pull_request.base.sha, github.event.pull_request.head.sha, vars.*, secrets.*]
+# steps.*.outputs, needs.*.outputs, matrix.* and inputs.* are safe only when you know they never carry
+# author or model text; pass them through env: when in doubt.
 for each run: block and each actions/github-script "script:" block:
     for each ${{ expr }} in it:
         if expr reads a context not in SAFE (title, body, head_ref, branch names, comments, labels, ...):
@@ -144,7 +145,7 @@ for each source file changed by the pull request:
 When every line is important, none is.
 
 ```text
-for file in [AGENTS.md, CLAUDE.md] + .claude/rules/*.md:
+for file in [AGENTS.md, CLAUDE.md] + .claude/rules/**/*.md:
     n = count of lines containing "IMPORTANT" or "MUST" in capitals, outside code blocks
     if n > 1:
         warn(file, "{n} emphasised lines; keep one at most")
@@ -155,7 +156,7 @@ for file in [AGENTS.md, CLAUDE.md] + .claude/rules/*.md:
 Two lines that disagree make the agent pick one at random, and it will not say which.
 
 ```text
-statements = every rule-like line in AGENTS.md, CLAUDE.md, .claude/rules/*.md, docs/conventions/*.md
+statements = every rule-like line in AGENTS.md, CLAUDE.md, .claude/rules/**/*.md, docs/conventions/*.md
 group statements by topic (a command, a tool, a directory, a limit, a branch, a format)
 for each topic with more than one statement:
     if two statements require incompatible things (different commands for the same job, different
