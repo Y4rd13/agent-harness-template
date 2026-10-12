@@ -1,0 +1,31 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "permissions": {
+    "allow": [
+      "Bash(<test command>)",
+      "Bash(<lint command>)",
+      "Bash(<format command>)"
+    ],
+    "ask": [
+      "Bash(git push *)"
+    ],
+    "deny": [
+      "Read(./.env)",
+      "Read(./.env.*)",
+      "Read(./secrets/**)"
+    ]
+  },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "cmd=$(jq -r '.tool_input.command // empty'); br=$(git branch --show-current 2>/dev/null); g='(^|[;&|[:space:]])git([[:space:]]+-[^[:space:]]+([[:space:]]+[^-[:space:]][^[:space:]]*)?)*[[:space:]]+'; if printf '%s' \"$cmd\" | grep -Eq \"${g}push[^;&|]*[[:space:]:]main([[:space:];&|]|$)\" || { [ \"$br\" = main ] && printf '%s' \"$cmd\" | grep -Eq \"${g}(commit|push([[:space:]]+[^-[:space:];&|]+)?[[:space:]]*([;&|]|$))\"; }; then echo 'Blocked by a project hook: no commits or pushes to main. Create a feature branch first.' >&2; exit 2; fi"
+          }
+        ]
+      }
+    ]
+  }
+}
