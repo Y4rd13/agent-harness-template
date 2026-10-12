@@ -1,0 +1,18 @@
+{
+  "mcpServers": {
+    "docs": {
+      "type": "http",
+      "url": "https://mcp.example.com/mcp",
+      "headers": {
+        "Authorization": "Bearer ${DOCS_MCP_TOKEN}"
+      }
+    },
+    "local-db": {
+      "command": "npx",
+      "args": ["-y", "<mcp-server-package>@<exact version>"],
+      "env": {
+        "DATABASE_URL": "${DATABASE_URL:-postgresql://localhost:5432/dev}"
+      }
+    }
+  }
+}
