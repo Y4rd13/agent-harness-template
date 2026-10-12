@@ -1,5 +1,7 @@
 # agent-harness-template
 
+[Español](README.es.md)
+
 Templates, a Claude Code plugin and short lessons for making an AI coding assistant follow your
 repository's conventions, with checks that do not depend on it remembering them.
 
