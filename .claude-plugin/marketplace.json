@@ -1,0 +1,14 @@
+{
+  "name": "agent-harness-template",
+  "description": "Templates, skills and lessons for making an AI coding assistant follow your repository's conventions",
+  "owner": {
+    "name": "agent-harness-template authors"
+  },
+  "plugins": [
+    {
+      "name": "agent-harness",
+      "source": "./plugins/agent-harness",
+      "description": "Set up, audit and extend an agent harness: AGENTS.md, CLAUDE.md, path-scoped rules, settings, hooks and CI"
+    }
+  ]
+}

@@ -1,0 +1,7 @@
+# Personal Claude Code files: never shared
+CLAUDE.local.md
+.claude/settings.local.json
+.claude/worktrees/
+# Local tooling state
+node_modules/
+.DS_Store
