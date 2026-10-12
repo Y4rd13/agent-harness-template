@@ -1,0 +1,12 @@
+# CLAUDE.local.md (personal, never committed)
+
+<!--
+Copy to CLAUDE.local.md at the repository root and keep it in .gitignore. It loads next to CLAUDE.md,
+for you only. Note: a CLAUDE.local.md counts as a CLAUDE.md file, so in a repository that relies on
+Claude reading AGENTS.md directly (no CLAUDE.md), adding this file stops that. Import AGENTS.md from a
+CLAUDE.md to avoid the surprise.
+-->
+
+- My local API runs at <http://localhost:PORT>; use it for manual checks.
+- Prefer <my test data set> when seeding.
+- I review diffs in <editor>; keep commits small.
