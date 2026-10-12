@@ -1,0 +1,33 @@
+{
+  "claims": [
+    {
+      "id": "ci-gate-name",
+      "source": "AGENTS.md",
+      "quote": "<the exact line of AGENTS.md that names the required check, copied whole>",
+      "type": "regex_present",
+      "args": {
+        "path": ".github/workflows/ci.yml",
+        "pattern": "name: CI Gate"
+      }
+    },
+    {
+      "id": "testing-rule-exists",
+      "source": "AGENTS.md",
+      "quote": "- `.claude/rules/testing.md` - test conventions; read before touching tests (Claude Code loads it automatically)",
+      "type": "file_exists",
+      "args": {
+        "path": ".claude/rules/testing.md"
+      }
+    },
+    {
+      "id": "no-floating-action-tags",
+      "source": "AGENTS.md",
+      "quote": "<the line that says actions are pinned by commit SHA>",
+      "type": "regex_absent",
+      "args": {
+        "path": ".github/workflows/ci.yml",
+        "pattern": "uses: [^@]+@v[0-9]"
+      }
+    }
+  ]
+}

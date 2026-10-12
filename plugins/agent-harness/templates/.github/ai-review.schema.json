@@ -1,0 +1,25 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["findings"],
+  "properties": {
+    "findings": {
+      "type": "array",
+      "maxItems": 25,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "file", "line", "quote", "severity", "title", "body"],
+        "properties": {
+          "id": { "type": "string", "description": "F1, F2, ... in order" },
+          "file": { "type": "string", "description": "Path relative to pr-head/" },
+          "line": { "type": "integer", "minimum": 1, "description": "Line in the pull request's version of the file" },
+          "quote": { "type": "string", "minLength": 12, "description": "Text copied exactly from the file, within 3 lines of line" },
+          "severity": { "type": "string", "enum": ["blocking", "advisory"] },
+          "title": { "type": "string", "maxLength": 120 },
+          "body": { "type": "string", "maxLength": 1500, "description": "Why it is wrong and the smallest fix" }
+        }
+      }
+    }
+  }
+}

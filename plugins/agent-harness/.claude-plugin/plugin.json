@@ -1,0 +1,9 @@
+{
+  "name": "agent-harness",
+  "description": "Set up, audit and extend an agent harness: AGENTS.md, CLAUDE.md, path-scoped rules, settings, hooks and CI",
+  "version": "0.1.0",
+  "author": {
+    "name": "agent-harness-template authors"
+  },
+  "license": "MIT"
+}

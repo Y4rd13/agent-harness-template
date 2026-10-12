@@ -1,0 +1,222 @@
+# AI review: a model reviews the pull request inside a read-only sandbox, and a model-free gate decides
+# what its findings mean. The model never gets a write token, never runs a command, and never reads the
+# pull request's own agent configuration. The gate drops every blocking finding whose quote is not in
+# the file, so an invented finding cannot block a merge.
+#
+# Before the first run, merge .github/prompts/ai-review.prompt.md and .github/ai-review.schema.json on
+# their own: prepare reads both from the base branch, so the pull request that adds them cannot use them.
+# The prompt and the schema come from the base branch, but under pull_request this workflow file itself
+# runs from the pull request; keep .github/ in CODEOWNERS so a change to it needs an owner's review.
+#
+# Setup: a repository secret ANTHROPIC_API_KEY (or CLAUDE_CODE_OAUTH_TOKEN; swap the input below), and a
+# repository variable AI_REVIEW_MODE: off (default), shadow (report only, check stays neutral) or advise
+# (the check fails while a verified blocking finding remains). Start in shadow, read a few weeks of
+# verdicts, then switch to advise and make ai-review/gate a required check. Forks and drafts get no
+# check at all, so a required ai-review/gate keeps them waiting: review those by hand.
+name: AI review
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+
+permissions: {}
+
+concurrency:
+  group: ai-review-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  # No model. Builds the review input: the pull request's tree as data, the diff, and the prompt and
+  # schema taken from the base branch, so a pull request cannot rewrite the rules it is judged by.
+  prepare:
+    # Forks get no secrets, and drafts are not ready to review.
+    if: ${{ !github.event.pull_request.draft && github.event.pull_request.head.repo.full_name == github.repository }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    outputs:
+      too_large: ${{ steps.size.outputs.too_large }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+          path: src
+
+      - name: Build the review input
+        env:
+          BASE: ${{ github.event.pull_request.base.sha }}
+          HEAD: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+          mkdir -p context pr-head
+          git -C src show "$BASE:.github/prompts/ai-review.prompt.md" > context/prompt.md
+          git -C src show "$BASE:.github/ai-review.schema.json" > context/schema.json
+          git -C src diff "$BASE...$HEAD" > context/diff.patch
+          # The conventions the review judges against, from the base branch.
+          mkdir -p context/conventions
+          for f in $(git -C src ls-tree -r --name-only "$BASE" -- AGENTS.md .claude/rules); do
+            mkdir -p "context/conventions/$(dirname "$f")"
+            git -C src show "$BASE:$f" > "context/conventions/$f"
+          done
+          git -C src archive "$HEAD" | tar -x -C pr-head
+          # Data, not configuration: no symlinks (Read follows them out of the workspace) and no agent
+          # config files that the review agent would load as instructions.
+          find pr-head -type l -delete
+          find pr-head \( -name AGENTS.md -o -name CLAUDE.md -o -name CLAUDE.local.md -o -name .mcp.json \
+            -o -name .claude.json -o -name .claude \) -prune -exec rm -rf {} +
+
+      - name: Measure the change
+        id: size
+        env:
+          BASE: ${{ github.event.pull_request.base.sha }}
+          HEAD: ${{ github.event.pull_request.head.sha }}
+          MAX_LINES: ${{ vars.AI_REVIEW_MAX_LINES || '1000' }}
+        run: |
+          case "$MAX_LINES" in ''|*[!0-9]*) echo "::warning::AI_REVIEW_MAX_LINES is not a number; using 1000"; MAX_LINES=1000 ;; esac
+          lines=$(git -C src diff --numstat "$BASE...$HEAD" \
+            | grep -vE '(^|/)(tests?|__tests__)/|\.(test|spec)\.|(\.lock|-lock\.(json|yaml)|lock\.json)$' \
+            | awk '{ s += $1 + $2 } END { print s + 0 }')
+          echo "non-test lines changed: $lines (limit $MAX_LINES)"
+          echo "too_large=$([ "$lines" -gt "$MAX_LINES" ] && echo true || echo false)" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: review-input
+          path: |
+            context/
+            pr-head/
+          include-hidden-files: true
+          retention-days: 3
+
+  # The model. Read, Grep and Glob only; no shell, no edits, no network, no hooks, no MCP servers.
+  review:
+    needs: prepare
+    if: ${{ needs.prepare.outputs.too_large == 'false' && (vars.AI_REVIEW_MODE == 'shadow' || vars.AI_REVIEW_MODE == 'advise') }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    outputs:
+      verdict: ${{ steps.review.outputs.structured_output }}
+    steps:
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: review-input
+          path: .
+
+      - name: Check the review input
+        id: input
+        run: |
+          set -euo pipefail
+          test -f context/prompt.md && test -f context/schema.json && test -d pr-head
+          test "$(find . -type l | wc -l)" -eq 0
+          test "$(find pr-head \( -name AGENTS.md -o -name CLAUDE.md -o -name .claude -o -name .mcp.json \) | wc -l)" -eq 0
+          echo "schema=$(jq -c . context/schema.json)" >> "$GITHUB_OUTPUT"
+
+      - name: Review
+        id: review
+        uses: anthropics/claude-code-action@756cc22e19660d20e8cc9496b4f242475a7f7790 # v1.0.235
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          github_token: ${{ github.token }}
+          prompt: |
+            Follow context/prompt.md exactly. The pull request under review is in pr-head/ and its diff is
+            context/diff.patch.
+          # Pin an exact model id, and change it on purpose: a new model changes what the review finds.
+          claude_args: |
+            --model claude-sonnet-5-5
+            --permission-mode dontAsk
+            --strict-mcp-config
+            --settings '{"disableAllHooks":true,"permissions":{"deny":["Read(./.git/**)","Read(//proc/**)","Grep(//proc/**)","Glob(//proc/**)"]}}'
+            --allowedTools Read,Grep,Glob
+            --disallowedTools Bash,Edit,Write,NotebookEdit,WebFetch,WebSearch
+            --json-schema '${{ steps.input.outputs.schema }}'
+
+      - name: Assert a verdict came back
+        env:
+          VERDICT: ${{ steps.review.outputs.structured_output }}
+        run: test -n "$VERDICT" || { echo "::error::the review returned no structured output"; exit 1; }
+
+  # No model. Verifies each blocking finding's quote against the file and publishes the check.
+  gate:
+    needs: [prepare, review]
+    if: ${{ !cancelled() && needs.prepare.result == 'success' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      checks: write
+      pull-requests: write
+    steps:
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: review-input
+          path: .
+
+      - name: Gate
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        env:
+          AI_REVIEW_MODE: ${{ vars.AI_REVIEW_MODE }}
+          VERDICT: ${{ needs.review.outputs.verdict }}
+          REVIEW_RESULT: ${{ needs.review.result }}
+          TOO_LARGE: ${{ needs.prepare.outputs.too_large }}
+        with:
+          script: |
+            const fs = require('fs'), path = require('path');
+            const env = process.env;
+            const mode = ['shadow', 'advise'].includes(env.AI_REVIEW_MODE) ? env.AI_REVIEW_MODE : 'off';
+            const pr = context.payload.pull_request;
+            const norm = (s) => String(s).replace(/\s+/g, '');
+            const secretShaped = /AKIA[0-9A-Z]{16}|gh[pousr]_[A-Za-z0-9]{20,}|sk-[A-Za-z0-9_-]{20,}|xox[abprs]-|-----BEGIN [A-Z ]*PRIVATE KEY/;
+            const root = path.resolve('pr-head');
+            const cell = (s, n) => String(s ?? '').replace(/[|\r\n`<>]/g, ' ').slice(0, n);
+            function quoteFound(f) {
+              const file = path.resolve(root, String(f.file || ''));
+              if (!file.startsWith(root + path.sep)) return false;
+              let text;
+              try { if (!fs.statSync(file).isFile()) return false; text = fs.readFileSync(file, 'utf8'); } catch { return false; }
+              const q = norm(f.quote || '');
+              if (q.length < 12) return false;
+              const lines = text.split('\n');
+              const at = Number(f.line) - 1;
+              return norm(lines.slice(Math.max(0, at - 3), at + 4).join('\n')).includes(q);
+            }
+            let kept = [], dropped = 0, summary;
+            let would = 'success';
+            if (mode === 'off') {
+              summary = 'AI review mode off: nothing was evaluated.';
+            } else if (env.TOO_LARGE === 'true') {
+              would = 'failure';
+              summary = 'Too large to review: split this pull request into smaller, stacked ones.';
+            } else {
+              let verdict;
+              try { verdict = JSON.parse(env.VERDICT || ''); } catch { verdict = null; }
+              if (env.REVIEW_RESULT !== 'success' || !verdict || !Array.isArray(verdict.findings)) {
+                core.setFailed('The review produced no valid verdict; the gate does not pass without one.');
+                return;
+              }
+              for (const f of verdict.findings) {
+                if (!f || typeof f !== 'object') { dropped++; continue; }
+                if (secretShaped.test(JSON.stringify(f))) { dropped++; continue; }
+                if (f.severity === 'blocking' && !quoteFound(f)) { dropped++; continue; }
+                kept.push(f);
+              }
+              const blocking = kept.filter((f) => f.severity === 'blocking');
+              if (blocking.length) would = 'failure';
+              const rows = kept.map((f) => `| ${cell(f.severity, 10)} | ${cell(f.file, 120)}:${Number(f.line) || 0} | ${cell(f.title, 120)} | ${cell(f.body, 400)} |`);
+              summary = `${blocking.length} blocking, ${kept.length - blocking.length} other, ${dropped} dropped (quote not found or secret-shaped).\n\n`
+                + (rows.length ? `| Severity | Where | Finding | Why and fix |\n| --- | --- | --- | --- |\n${rows.join('\n')}` : 'No findings.');
+            }
+            const conclusion = mode === 'advise' ? would : 'neutral';
+            const title = mode === 'off' ? 'mode off' : mode === 'shadow' ? `shadow: would ${would === 'failure' ? 'fail' : 'pass'}` : would;
+            await github.rest.checks.create({ ...context.repo, name: 'ai-review/gate', head_sha: pr.head.sha,
+              status: 'completed', conclusion, output: { title, summary } });
+            if (mode === 'off') return;
+            const marker = '<!-- ai-review -->';
+            const body = `${marker}\n**AI review** (${title})\n\n${summary}`;
+            const comments = await github.paginate(github.rest.issues.listComments, { ...context.repo, issue_number: pr.number });
+            const mine = comments.find((c) => c.user && c.user.type === 'Bot' && c.body && c.body.startsWith(marker));
+            if (mine) await github.rest.issues.updateComment({ ...context.repo, comment_id: mine.id, body });
+            else await github.rest.issues.createComment({ ...context.repo, issue_number: pr.number, body });

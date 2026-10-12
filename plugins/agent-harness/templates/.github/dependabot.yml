@@ -1,0 +1,27 @@
+# Weekly dependency updates, minors and patches grouped into one pull request per ecosystem so review
+# stays cheap. Major versions are left out: they need a person to read the changelog.
+version: 2
+updates:
+  - package-ecosystem: "<npm | pip | uv | gomod | cargo | maven | ...>"
+    directory: "/"
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 5
+    groups:
+      minor-and-patch:
+        update-types: ["minor", "patch"]
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
+
+  # Actions are pinned by commit SHA; Dependabot keeps the SHA and its version comment current.
+  - package-ecosystem: github-actions
+    directory: "/"
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 3
+    groups:
+      actions:
+        patterns: ["*"]

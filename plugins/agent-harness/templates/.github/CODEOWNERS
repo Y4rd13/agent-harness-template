@@ -1,0 +1,7 @@
+# The harness itself needs an owner's review: the files every agent reads, the CI that enforces the
+# rules, and the review automation. Application code is left out on purpose, so ordinary pull requests
+# do not wait on the owners.
+/AGENTS.md          @<your-org>/<harness-owners>
+/CLAUDE.md          @<your-org>/<harness-owners>
+/.claude/           @<your-org>/<harness-owners>
+/.github/           @<your-org>/<harness-owners>
