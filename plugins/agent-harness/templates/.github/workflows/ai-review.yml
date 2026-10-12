@@ -49,6 +49,12 @@ jobs:
           git -C src show "$BASE:.github/prompts/ai-review.prompt.md" > context/prompt.md
           git -C src show "$BASE:.github/ai-review.schema.json" > context/schema.json
           git -C src diff "$BASE...$HEAD" > context/diff.patch
+          # The conventions the review judges against, from the base branch.
+          mkdir -p context/conventions
+          for f in $(git -C src ls-tree -r --name-only "$BASE" -- AGENTS.md .claude/rules); do
+            mkdir -p "context/conventions/$(dirname "$f")"
+            git -C src show "$BASE:$f" > "context/conventions/$f"
+          done
           git -C src archive "$HEAD" | tar -x -C pr-head
           # Data, not configuration: no symlinks (Read follows them out of the workspace) and no agent
           # config files that the review agent would load as instructions.
