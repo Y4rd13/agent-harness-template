@@ -60,9 +60,14 @@ For each piece chosen, map a template to a target path and fill it:
 - `.claude/skills/ship-pr/SKILL.md`, `.claude/agents/reviewer.md`, `.github/pull_request_template.md`,
   `.github/CODEOWNERS` (ask for the owner team if unknown, or leave the file out), `.github/dependabot.yml`
   with the real ecosystem.
-- CI: `ci.yml` with one step per real command and the toolchain setup the stack needs (pinned by commit
-  SHA), `pr-title.yml`, `secret-scan.yml`, `instruction-files.yml`; and, only if chosen, `ai-review.yml`
-  with `.github/prompts/ai-review.prompt.md` and `.github/ai-review.schema.json`.
+- `docs/conventions/agent-instructions.md` and `docs/conventions/comments.md`: copy them whenever the
+  generated `AGENTS.md` points to them, so no pointer leads to a missing file.
+- CI: `ci.yml` with one step per command that works today and the toolchain setup the stack needs (pinned
+  by commit SHA), `pr-title.yml`, `secret-scan.yml`, `instruction-files.yml`; and, only if chosen,
+  `ai-review.yml` with `.github/prompts/ai-review.prompt.md` and `.github/ai-review.schema.json`. A command
+  whose tool, configuration or lockfile is missing (for example `npm ci` without a lockfile, `tsc` without
+  a `tsconfig.json`) stays out of `ci.yml`: a pull request that is red from its first run teaches the team
+  to ignore CI. List each one in the report with what it needs.
 - `.gitignore`: add `CLAUDE.local.md` and `.claude/settings.local.json`. If step 1 found `.claude/` ignored,
   add `!.claude/` and say why.
 
